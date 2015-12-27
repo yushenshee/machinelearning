@@ -1,0 +1,140 @@
+---
+title: "Machine Learning Project"
+author: "Shee"
+date: "Sunday, December 27, 2015"
+output: html_document
+---
+
+---
+title: "Machine Learning Project"
+author: "Shee"
+date: "Sunday, December 27, 2015"
+output: html_document
+---
+###Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+###Data
+
+The training data for this project are available here: [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv]
+
+The test data are available here: [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv]
+
+The data for this project come from this source: [http://groupware.les.inf.puc-rio.br/har]. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+
+###Reproduceability
+
+In order to reproduce the results, the same seed should be used.
+Different packages were downloaded and installed, such as caret and randomForest. These should also be installed in order to reproduce the results.
+
+
+###How the model was built
+
+Our outcome variable is classe, a factor variable with 5 levels. For this data set, "participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in 5 different fashions:
+
+- exactly according to the specification (Class A)
+
+- throwing the elbows to the front (Class B)
+
+- lifting the dumbbell only halfway (Class C)
+
+- lowering the dumbbell only halfway (Class D)
+
+- throwing the hips to the front (Class E)
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes." [1] Prediction evaluations will be based on maximizing the accuracy and minimizing the out-of-sample error. All other available variables after cleaning will be used for prediction. Two models will be tested using decision tree and random forest algorithms. The model with the highest accuracy will be chosen as final model.
+
+
+###Cross-validation
+
+Cross-validation will be performed by subsampling the training data set randomly without replacement into 2 subsamples.
+
+
+###Expected out-of-sample error
+
+The expected out-of-sample error will correspond to the quantity: 
+1 - accuracy in the cross-validation data. Accuracy is the proportion of correct classified observation over the total sample in the subTesting data set. Expected accuracy is the expected accuracy in the out-of-sample data set (i.e. original testing data set). Thus, the expected value of the out-of-sample error will correspond to the expected number of missclassified observations/total observations in the Test data set.
+
+
+###Data Processing
+
+####Packages, Libraries, Seed
+```{r}
+library(caret)
+library(randomForest)
+library(rpart) 
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+
+set.seed(7714)
+```
+
+####Getting and Cleaning Data
+```{r}
+# Read data
+training <- read.csv("C:/R/module 8/pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+testing <- read.csv('C:/R/module 8/pml-testing.csv', na.strings=c("NA","#DIV/0!", ""))
+dim(training)
+dim(testing)
+
+# Delete columns with all missing values
+training <- training[,colSums(is.na(training)) == 0]
+testing <- testing[,colSums(is.na(testing)) == 0]
+
+# Delete variables which are irrelevant to project
+training <- training[,-c(1:7)]
+testing <- testing[,-c(1:7)]
+```
+
+####Partioning the training set
+
+In order to perform cross-validation, the training data set is partioned into 2 sets: subTraining (75%) and subTesting (25%).
+
+```{r}
+sub <- createDataPartition(y=training$classe, p=0.75, list=FALSE)
+subTraining <- training[sub, ] 
+subTesting <- training[-sub, ]
+```
+
+
+###Using ML algorithms for prediction: 1. Decision Tree
+```{r}
+modFit1 <- rpart(classe ~ ., data=subTraining, method="class")
+predict1 <- predict(modFit1, subTesting, type = "class")
+fancyRpartPlot(modFit1)
+confusionMatrix(predict1, subTesting$classe)
+```
+
+
+###Using ML algorithms for prediction: 2. Random Forest
+```{r}
+modFit2 <- randomForest(classe ~. , data=subTraining, method="class")
+predict2 <- predict(modFit2, subTesting, type = "class")
+confusionMatrix(predict2, subTesting$classe)
+```
+
+
+###Conclusion
+
+- Random Forest is a better model compared to Decision Tree.
+- Accuracy : Random Forest model 0.9943 (95% CI: (0.9918, 0.9962)) ; Decision Tree model 0.7321 (95% CI: (0.7194, 0.7444)) 
+
+
+###Generating files for submission
+```{r}
+predictFit <- predict(modFit2, testing, type="class")
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predictFit)
+```
+
